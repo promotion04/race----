@@ -5,18 +5,26 @@ import csv
 # 원본 파일들이 있는 최상위 폴더 아마 D or E 드라이브지 않을까?
 base_directory = 'C:\\Users\\promo\\OneDrive\\바탕 화면\\can' 
 
+# 미리 생성된 org_src,org_dst 파일 삭제
+if os.path.exists(base_directory + '\\org_src'):
+    shutil.rmtree(base_directory + '\\org_src')
+
+if os.path.exists(base_directory + '\\org_dst'):
+    shutil.rmtree(base_directory + '\\org_dst')
+
+
 for folder_name in os.listdir(base_directory): # 최상위 폴더에 있는 모든 하위폴더 처리
     source_directory = os.path.join(base_directory, folder_name)
     
     if not os.path.isdir(source_directory):
         continue
     
-    New_directory = os.path.join(base_directory, 'organize', folder_name)
+    New_directory = os.path.join(base_directory, 'org_src', folder_name)
 
     # 새 폴더가 존재하면 삭제하고 새로 만듬
     if os.path.exists(New_directory):
         shutil.rmtree(New_directory)
-    
+
     os.makedirs(New_directory)
     
     Detail_file_list = sorted(os.listdir(source_directory))
@@ -41,7 +49,7 @@ for folder_name in os.listdir(base_directory): # 최상위 폴더에 있는 모�
 
         start_file_name = Detail_file_list[start_indices[i]]
         foldername = Detail_file_list[start]
-        new_folder_name = f"{foldername}"
+        new_folder_name = os.path.splitext(foldername)[0] # 폴더 이름에서 파일 확장자 제거
         new_folder_path = os.path.join(New_directory, new_folder_name)
         
         os.makedirs(new_folder_path, exist_ok=True)
@@ -53,32 +61,29 @@ for folder_name in os.listdir(base_directory): # 최상위 폴더에 있는 모�
                 destination_file = os.path.join(new_folder_path, filename)
                 shutil.copy(source_file, destination_file)
         
-        # print(f"파일들이 {new_folder_path}에 저장되었습니다.")
+    #     print(f"파일들이 {new_folder_path}에 저장되었습니다.")
     
     # print(f"모든 파일이 {New_directory}에 저장되었습니다.")
 
-Org_file_list = sorted(os.listdir(base_directory + '\\organize\\'))
+Org_file_list = sorted(os.listdir(base_directory + '\\org_src\\'))
 for folder in Org_file_list:
-    folder_src = base_directory + '\\organize\\' + folder
+    folder += '\\'
+    folder_src = base_directory + '\\org_src\\' + folder
     folder_dst = base_directory + '\\org_dst\\' + folder
 
-    # 하위 디렉토리 목록 생성
     directories = [name for name in os.listdir(folder_src) if os.path.isdir(os.path.join(folder_src, name))]
 
+
     for directory in directories:
-        file_src = os.path.join(folder_src, directory) + '\\'
-        file_dst = os.path.join(folder_dst, directory) + '\\'
-        
-        # 디렉터리가 존재하지 않으면 생성
-        if not os.path.exists(file_dst):
-            os.makedirs(file_dst)
-        
-        # 기존 파일 삭제
+        file_src = folder_src + directory + '\\'
+        file_dst = folder_dst + directory + '\\'
+
+        os.makedirs(file_dst)
+
         if os.path.exists(file_dst):
             for file in os.scandir(file_dst):
-                os.remove(file.path) 
+                os.remove(file)
         
-        # 파일 열기
         f_orion_bms1 = open(file_dst + directory + '_orion_bms1.csv', 'w', newline='')
         f_orion_bms2 = open(file_dst + directory + '_orion_bms2.csv', 'w', newline='')
         f_orion_bms3 = open(file_dst + directory + '_orion_bms3.csv', 'w', newline='')
@@ -90,7 +95,7 @@ for folder in Org_file_list:
         f_amk_actual_values1_rr = open(file_dst + directory + '_amk_actual_values1_rr.csv', 'w', newline='')
         f_amk_actual_values2_rr = open(file_dst + directory + '_amk_actual_values2_rr.csv', 'w', newline='')
         
-        f_steeting_wheel_msg2 = open(file_dst + directory + '_steeting_wheel_msg2.csv', 'w', newline='')
+        f_steering_wheel_msg2 = open(file_dst + directory + '_steering_wheel_msg2.csv', 'w', newline='')
 
         writer = csv.writer(f_orion_bms1)
         writer.writerow(['time', 'packCurrent', 'packVoltage', 'packSoc', 'packPower'])
@@ -112,12 +117,13 @@ for folder in Org_file_list:
         writer = csv.writer(f_amk_actual_values2_rr)
         writer.writerow(['time', 'AMK_TempMotor', 'AMK_TempInverter', 'AMK_ErrorInfo', 'AMK_TempIGBT'])
         
-        writer = csv.writer(f_steeting_wheel_msg2)
+        writer = csv.writer(f_steering_wheel_msg2)
         writer.writerow(['time', 'apps', 'bpps'])
 
-        files = os.listdir(file_src)
+        files = os.listdir(folder_src + directory)
         
         time = 0
+
 
         for file in files:
             f = open(file_src + file)
@@ -243,112 +249,137 @@ for folder in Org_file_list:
                     writer = csv.writer(f_amk_setpoint1_rr)
                     writer.writerow([time, AMK_bInverterOn, AMK_bDcOn, AMK_bEnable, AMK_bErrorReset, AMK_Torque_setpoint, AMK_TorqueLimitPositv, AMK_TorqueLimitNegativ])
 
-                if line[3] == '0027520B':
-                    if len(line) < 12:
-                        continue
-
-                    AMK_bSystemReady = (int(line[4], 16)) & 0b1
-                    AMK_bError = (int(line[4], 16) >> 1) & 0b1
-                    AMK_bWarn = (int(line[4], 16) >> 2) & 0b1
-                    AMK_bQuitDcOn = (int(line[4], 16) >> 3) & 0b1
-                    AMK_bDcOn = (int(line[4], 16) >> 4) & 0b1
-                    AMK_bQuitInverterOn = (int(line[4], 16) >> 5) & 0b1
-                    AMK_bInverterOn = (int(line[4], 16) >> 6) & 0b1
-                    AMK_bDerating = (int(line[4], 16) >> 7) & 0b1
-
-                    AMK_ActualVelocity = int(line[6] + line[5], 16)
-                    if AMK_ActualVelocity > 32767:
-                        AMK_ActualVelocity -= 65536
-
-                    AMK_TorqueCurrent = int(line[8] + line[7], 16)
-                    if AMK_TorqueCurrent > 32767:
-                        AMK_TorqueCurrent -= 65536
-
-                    AMK_MagnetizingCurrent = int(line[10] + line[9], 16)
-                    if AMK_MagnetizingCurrent > 32767:
-                        AMK_MagnetizingCurrent -= 65536
-
-                    writer = csv.writer(f_amk_actual_values1_rl)
-                    writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
-
-                if line[3] == '0027520C':
-                    if len(line) < 12:
-                        continue
-
-                    AMK_TempMotor = int(line[4], 16)
-                    if AMK_TempMotor > 127:
-                        AMK_TempMotor -= 256
-
-                    AMK_TempInverter = int(line[5], 16)
-                    if AMK_TempInverter > 127:
-                        AMK_TempInverter -= 256
-
-                    AMK_ErrorInfo = int(line[6], 16)
-                    AMK_TempIGBT = int(line[7], 16)
-                    if AMK_TempIGBT > 127:
-                        AMK_TempIGBT -= 256
-
-                    writer = csv.writer(f_amk_actual_values2_rl)
-                    writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
-
-                if line[3] == '0027520D':
-                    if len(line) < 12:
-                        continue
-
-                    AMK_bSystemReady = (int(line[4], 16)) & 0b1
-                    AMK_bError = (int(line[4], 16) >> 1) & 0b1
-                    AMK_bWarn = (int(line[4], 16) >> 2) & 0b1
-                    AMK_bQuitDcOn = (int(line[4], 16) >> 3) & 0b1
-                    AMK_bDcOn = (int(line[4], 16) >> 4) & 0b1
-                    AMK_bQuitInverterOn = (int(line[4], 16) >> 5) & 0b1
-                    AMK_bInverterOn = (int(line[4], 16) >> 6) & 0b1
-                    AMK_bDerating = (int(line[4], 16) >> 7) & 0b1
-
-                    AMK_ActualVelocity = int(line[6] + line[5], 16)
-                    if AMK_ActualVelocity > 32767:
-                        AMK_ActualVelocity -= 65536
-
-                    AMK_TorqueCurrent = int(line[8] + line[7], 16)
-                    if AMK_TorqueCurrent > 32767:
-                        AMK_TorqueCurrent -= 65536
-
-                    AMK_MagnetizingCurrent = int(line[10] + line[9], 16)
-                    if AMK_MagnetizingCurrent > 32767:
-                        AMK_MagnetizingCurrent -= 65536
-
-                    writer = csv.writer(f_amk_actual_values1_rr)
-                    writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
-
-                if line[3] == '0027520E':
-                    if len(line) < 12:
-                        continue
-
-                    AMK_TempMotor = int(line[4], 16)
-                    if AMK_TempMotor > 127:
-                        AMK_TempMotor -= 256
-
-                    AMK_TempInverter = int(line[5], 16)
-                    if AMK_TempInverter > 127:
-                        AMK_TempInverter -= 256
-
-                    AMK_ErrorInfo = int(line[6], 16)
-                    AMK_TempIGBT = int(line[7], 16)
-                    if AMK_TempIGBT > 127:
-                        AMK_TempIGBT -= 256
-
-                    writer = csv.writer(f_amk_actual_values2_rr)
-                    writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
-
-                if line[3] == '0027520F':
+                if line[3] == '00275287':
                     if len(line) < 12:
                         continue
                     
-                    steering_wheel_msg2_apps = int(line[5], 16)
-                    steering_wheel_msg2_bpps = int(line[6], 16)
+                    AMK_Status = int(line[5], 16) # line[4] is reserved
+                    
+                    AMK_bSystemReady = (AMK_Status) & 0b1
+                    AMK_bError = (AMK_Status >> 1) & 0b1
+                    AMK_bWarn = (AMK_Status >> 2) & 0b1
+                    AMK_bQuitDcOn  = (AMK_Status >> 3) & 0b1
+                    AMK_bDcOn = (AMK_Status >> 4) & 0b1
+                    AMK_bQuitInverterOn = (AMK_Status >> 5) & 0b1
+                    AMK_bInverterOn = (AMK_Status >> 6) & 0b1
+                    AMK_bDerating = (AMK_Status >> 7) & 0b1
+                    
+                    AMK_ActualVelocity = int(line[7] + line[6], 16)
+                    if AMK_ActualVelocity > 32767:
+                        AMK_ActualVelocity -= 65536
+                        
+                    AMK_TorqueCurrent = int(line[9] + line[8], 16)
+                    if AMK_TorqueCurrent > 32767:
+                        AMK_TorqueCurrent -= 65536
+                        
+                    AMK_MagnetizingCurrent = int(line[11] + line[10], 16)
+                    if AMK_MagnetizingCurrent > 32767:
+                        AMK_MagnetizingCurrent -= 65536
+                        
+                    writer = csv.writer(f_amk_actual_values1_rl)
+                    writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
+                    
+                if line[3] == '00275288':
+                    if len(line) < 12:
+                        continue
+                    
+                    AMK_Status = int(line[5], 16) # line[4] is reserved
+                    
+                    AMK_bSystemReady = (AMK_Status) & 0b1
+                    AMK_bError = (AMK_Status >> 1) & 0b1
+                    AMK_bWarn = (AMK_Status >> 2) & 0b1
+                    AMK_bQuitDcOn  = (AMK_Status >> 3) & 0b1
+                    AMK_bDcOn = (AMK_Status >> 4) & 0b1
+                    AMK_bQuitInverterOn = (AMK_Status >> 5) & 0b1
+                    AMK_bInverterOn = (AMK_Status >> 6) & 0b1
+                    AMK_bDerating = (AMK_Status >> 7) & 0b1
+                    
+                    AMK_ActualVelocity = int(line[7] + line[6], 16)
+                    if AMK_ActualVelocity > 32767:
+                        AMK_ActualVelocity -= 65536
+                        
+                    AMK_TorqueCurrent = int(line[9] + line[8], 16)
+                    if AMK_TorqueCurrent > 32767:
+                        AMK_TorqueCurrent -= 65536
+                        
+                    AMK_MagnetizingCurrent = int(line[11] + line[10], 16)
+                    if AMK_MagnetizingCurrent > 32767:
+                        AMK_MagnetizingCurrent -= 65536
+                        
+                    writer = csv.writer(f_amk_actual_values1_rr)
+                    writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
+                    
+                if line[3] == '00275289':
+                    if len(line) < 12:
+                        continue
+                    
+                    AMK_TempMotor  = int(line[5] + line[4], 16)
+                    if AMK_TempMotor > 32767:
+                        AMK_TempMotor -= 65536
+                        
+                    AMK_TempMotor /= 10
+                        
+                    AMK_TempInverter = int(line[7] + line[6], 16)
+                    if AMK_TempInverter > 32767:
+                        AMK_TempInverter -= 65536
+                        
+                    AMK_TempInverter /= 10
+                        
+                    AMK_ErrorInfo = int(line[9] + line[8], 16)
+                    
+                    AMK_TempIGBT = int(line[11] + line[10], 16)
+                    if AMK_TempIGBT > 32767:
+                        AMK_TempIGBT -= 65536
+                        
+                    AMK_TempIGBT /= 10
+                    
+                    writer = csv.writer(f_amk_actual_values2_rr)
+                    writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
+                    
+                if line[3] == '0027528A':
+                    if len(line) < 12:
+                        continue
+                    
+                    AMK_TempMotor  = int(line[5] + line[4], 16)
+                    if AMK_TempMotor > 32767:
+                        AMK_TempMotor -= 65536
+                        
+                    AMK_TempMotor /= 10
+                        
+                    AMK_TempInverter = int(line[7] + line[6], 16)
+                    if AMK_TempInverter > 32767:
+                        AMK_TempInverter -= 65536
+                        
+                    AMK_TempInverter /= 10
+                        
+                    AMK_ErrorInfo = int(line[9] + line[8], 16)
+                    
+                    AMK_TempIGBT = int(line[11] + line[10], 16)
+                    if AMK_TempIGBT > 32767:
+                        AMK_TempIGBT -= 65536
+                        
+                    AMK_TempIGBT /= 10
+                    
+                    writer = csv.writer(f_amk_actual_values2_rl)
+                    writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
+                    
+                if line[3] == '00101F01':
+                    if len(line) < 12:
+                        continue
+                    
+                    apps = int(line[5] + line[4], 16)
+                    apps /= 100
+                    
+                    bpps = int(line[7] + line[6], 16)
+                    bpps /= 100
+                    
+                    writer = csv.writer(f_steering_wheel_msg2)
+                    writer.writerow([time, apps, bpps])
 
-                    writer = csv.writer(f_steeting_wheel_msg2)
-                    writer.writerow([time, steering_wheel_msg2_apps, steering_wheel_msg2_bpps])
-            print(f"파일들이 {file_dst}에 저장되었습니다.")
+            # print(f"파일들이 {file_dst}에 저장되었습니다.")
+
+            f.close()
+            
         f_orion_bms1.close()
         f_orion_bms2.close()
         f_orion_bms3.close()
@@ -360,6 +391,6 @@ for folder in Org_file_list:
         f_amk_actual_values1_rr.close()
         f_amk_actual_values2_rr.close()
         
-        f_steeting_wheel_msg2.close()
+        f_steering_wheel_msg2.close()
     
 print('end')
