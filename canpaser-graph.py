@@ -2,17 +2,15 @@ import os
 import shutil
 import csv
 
-# 기본 디렉토리 설정
-base_directory = 'C:\\Users\\promo\\OneDrive\\바탕 화면\\can2' 
+# 원본 파일들이 있는 최상위 폴더 아마 D or E 드라이브지 않을까?
+base_directory = 'C:\\Users\\promo\\OneDrive\\바탕 화면\\can' 
 
-# 미리 생성된 폴더 삭제 함수
-def remove_directory(path):
-    if os.path.exists(path):
-        shutil.rmtree(path)
+# 미리 생성된 org_src,org_dst 파일 삭제
+if os.path.exists(base_directory + '\\org_src'):
+    shutil.rmtree(base_directory + '\\org_src')
 
-# org_src, org_dst 폴더 삭제
-remove_directory(base_directory + '\\org_src')
-remove_directory(base_directory + '\\org_dst')
+if os.path.exists(base_directory + '\\org_dst'):
+    shutil.rmtree(base_directory + '\\org_dst')
 
 
 for folder_name in os.listdir(base_directory): # 최상위 폴더에 있는 모든 하위폴더 처리
@@ -66,38 +64,6 @@ for folder_name in os.listdir(base_directory): # 최상위 폴더에 있는 모�
     #     print(f"파일들이 {new_folder_path}에 저장되었습니다.")
     
     # print(f"모든 파일이 {New_directory}에 저장되었습니다.")
-
-# ex) constlist = [2, 4, 1] 는 16,32,8 비트로 데이터를 패킹 reserved된 값이 있다면 list로 우선 뽑고 추후에 변형
-def data_on(CAN_ID, constlist, line):
-    if line[3] == CAN_ID and len(line) >= 10:
-        data_list = []
-        cnt = 0        
-        for i in constlist:
-            cnt += i
-            if i == 8:
-                data_list.append(int(line[cnt + 3] + line[cnt + 2] + line[cnt + 1] + line[cnt] + line[cnt - 1] + line[cnt - 2] + line[cnt - 3] + line[cnt - 4], 16))
-            elif i == 4:
-                data_list.append(int(line[cnt + 3] + line[cnt + 2] + line[cnt + 1] + line[cnt], 16))
-            elif i == 2:
-                data_list.append(int(line[cnt + 3] + line[cnt + 2], 16))
-            elif i == 1:
-                data_list.append(int(line[cnt + 3], 16))
-        return data_list
-    else:
-        return []
-# 캡슐화
-#32767 대소
-def compareValues_32767(case_a):
-    if case_a > 32767:
-        case_a -= 65536
-    return case_a
-#127 대소
-def compareValues_127(case_b):
-    if case_b > 127:
-        case_b -= 256
-    return case_b
-
-
 
 Org_file_list = sorted(os.listdir(base_directory + '\\org_src\\'))
 for folder in Org_file_list:
@@ -158,6 +124,7 @@ for folder in Org_file_list:
         
         time = 0
 
+
         for file in files:
             f = open(file_src + file)
             lines = csv.reader(f)
@@ -171,16 +138,16 @@ for folder in Org_file_list:
                 
                 time += (int(line[0], 16) / 10)
                 
-                # orion_bms1
                 if line[3] == '00001F00':
                     if len(line) < 10:
                         continue
                     
                     packCurrent = int(line[5] + line[4], 16)
                     if packCurrent > 32767:
-                        packCurrent -= 65536                        
+                        packCurrent -= 65536
+                        
                     packCurrent /= 10
-                    
+                        
                     packVoltage = int(line[7] + line[6], 16)
                     packVoltage /= 10
                     
@@ -191,24 +158,11 @@ for folder in Org_file_list:
                     
                     writer = csv.writer(f_orion_bms1)
                     writer.writerow([time, packCurrent, packVoltage, packSoc, packPower])
-                
-                # orion_bms1_DL = data_on('00001F00',[2,2,1],line)
-                # packCurrent = compareValues_32767(int(orion_bms1_DL[0]))
-                
-                # packVoltage = int(orion_bms1_DL[1]) / 10
-                
-                # packSoc = int(orion_bms1_DL[2]) / 2
-                
-                # packPower = packCurrent * packVoltage // 1000
-
-                # writer = csv.writer(f_orion_bms1)
-                # writer.writerow([time, packCurrent, packVoltage, packSoc, packPower])
-
-                # orion_bms2    
+                    
                 if line[3] == '00001F01':
                     if len(line) < 10:
                         continue
-                        
+                    
                     packChargeLimit = int(line[5] + line[4], 16)
                     if packChargeLimit > 32767:
                         packChargeLimit -= 65536
@@ -216,21 +170,10 @@ for folder in Org_file_list:
                     packDischargeLimit = int(line[7] + line[6], 16)
                     if packDischargeLimit > 32767:
                         packDischargeLimit -= 65536
-                    packDischargeLimit /= 10 # A 단위 맞추기
                     
                     writer = csv.writer(f_orion_bms2)
                     writer.writerow([time, packChargeLimit, packDischargeLimit])
-                
-                # orion_bms2_DL = data_on('00001F01',[2,2],line)
-
-                # packChargeLimit = compareValues_32767(int(orion_bms2_DL[0]))
-                # packDischargeLimit = compareValues_32767(int(orion_bms2_DL[1]))
-                # packDischargeLimit /= 10 # A 단위 맞추기
-                
-                # writer = csv.writer(f_orion_bms2)
-                # writer.writerow([time, packChargeLimit, packDischargeLimit])
-
-                # orion_bms3    
+                    
                 if line[3] == '00001F02':
                     if len(line) < 10:
                         continue
@@ -254,24 +197,11 @@ for folder in Org_file_list:
                     writer = csv.writer(f_orion_bms3)
                     writer.writerow([time, highTemp, highCell, avgTemp, bmsTemp, lowVoltage])
 
-                # orion_bms3_DL = data_on('00001F02',[1,1,1,1,2],line)
-
-                # highTemp = compareValues_127(int(orion_bms3_DL[0]))
-                # highCell = int(orion_bms3_DL[1])
-                # avgTemp = compareValues_127(int(orion_bms3_DL[2]))
-                # bmsTemp = compareValues_127(int(orion_bms3_DL[3]))
-                # lowVoltage = int(orion_bms3_DL[4]) / 10000
-
-                # writer = csv.writer(f_orion_bms3)
-                # writer.writerow([time, highTemp, highCell, avgTemp, bmsTemp, lowVoltage])
-
-                
-                # amk_setpoint1_rl
                 if line[3] == '00275188':
                     if len(line) < 12:
                         continue
                         
-                    AMK_Control = int(line[5], 16) # line[4] is reserved
+                    AMK_Control = int(line[5], 16)
 
                     AMK_bInverterOn = (AMK_Control) & 0b1
                     AMK_bDcOn = (AMK_Control >> 1) & 0b1
@@ -293,23 +223,11 @@ for folder in Org_file_list:
                     writer = csv.writer(f_amk_setpoint1_rl)
                     writer.writerow([time, AMK_bInverterOn, AMK_bDcOn, AMK_bEnable, AMK_bErrorReset, AMK_Torque_setpoint, AMK_TorqueLimitPositv, AMK_TorqueLimitNegativ])
 
-                # amk_setpoint1_rl_DL = data_on('00275188',[1,1,2,2,2],line) ## amk_setpoint1_rl_DL[0] is reserved
-
-                # AMK_Control = int(amk_setpoint1_rl_DL[1])
-                # AMK_Torque_setpoint = compareValues_32767(int(amk_setpoint1_rl_DL[2]))
-                # AMK_TorqueLimitPositv = compareValues_32767(int(amk_setpoint1_rl_DL[3]))
-                # AMK_TorqueLimitNegativ = compareValues_32767(int(amk_setpoint1_rl_DL[4]))
-
-                # writer = csv.writer(f_amk_setpoint1_rl)
-                # writer.writerow([time, AMK_bInverterOn, AMK_bDcOn, AMK_bEnable, AMK_bErrorReset, AMK_Torque_setpoint, AMK_TorqueLimitPositv, AMK_TorqueLimitNegativ])
-
-
-                # amk_setpoint1_rr
                 if line[3] == '00275189':
                     if len(line) < 12:
                         continue
                 
-                    AMK_Control = int(line[5], 16) # line[4] is reserved
+                    AMK_Control = int(line[5], 16)
 
                     AMK_bInverterOn = (AMK_Control) & 0b1
                     AMK_bDcOn = (AMK_Control >> 1) & 0b1
@@ -330,19 +248,7 @@ for folder in Org_file_list:
 
                     writer = csv.writer(f_amk_setpoint1_rr)
                     writer.writerow([time, AMK_bInverterOn, AMK_bDcOn, AMK_bEnable, AMK_bErrorReset, AMK_Torque_setpoint, AMK_TorqueLimitPositv, AMK_TorqueLimitNegativ])
-                
-                # amk_setpoint1_rr_DL = data_on('00275189',[1,1,2,2,2],line) # amk_setpoint1_rr_DL[0] is reserved
 
-                # AMK_Control = int(amk_setpoint1_rr_DL[1])
-                # AMK_Torque_setpoint = compareValues_32767(int(amk_setpoint1_rr_DL[2]))
-                # AMK_TorqueLimitPositv = compareValues_32767(int(amk_setpoint1_rr_DL[3]))
-                # AMK_TorqueLimitNegativ = compareValues_32767(int(amk_setpoint1_rr_DL[4]))
-
-                # writer = csv.writer(f_amk_setpoint1_rr)
-                # writer.writerow([time, AMK_bInverterOn, AMK_bDcOn, AMK_bEnable, AMK_bErrorReset, AMK_Torque_setpoint, AMK_TorqueLimitPositv, AMK_TorqueLimitNegativ])
-              
-
-                # amk_actual_values1_rl
                 if line[3] == '00275287':
                     if len(line) < 12:
                         continue
@@ -372,19 +278,7 @@ for folder in Org_file_list:
                         
                     writer = csv.writer(f_amk_actual_values1_rl)
                     writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
-
-                # amk_actual_values1_rl_DL = data_on('00275287',[1,1,2,2,2],line) # amk_actual_values1_rl_DL[0] is reserved
-
-                # AMK_Status = int(amk_actual_values1_rl_DL[1])
-                # AMK_ActualVelocity = compareValues_32767(int(amk_actual_values1_rl_DL[2]))
-                # AMK_TorqueCurrent = compareValues_32767(int(amk_actual_values1_rl_DL[3]))
-                # AMK_MagnetizingCurrent = compareValues_32767(int(amk_actual_values1_rl_DL[4]))
-
-                # writer = csv.writer(f_amk_actual_values1_rl)
-                # writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
-
-
-                #  amk_actual_values1_rr
+                    
                 if line[3] == '00275288':
                     if len(line) < 12:
                         continue
@@ -414,19 +308,7 @@ for folder in Org_file_list:
                         
                     writer = csv.writer(f_amk_actual_values1_rr)
                     writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
-
-                # amk_actual_values1_rr_DL = data_on('00275288',[1,1,2,2,2],line) # amk_actual_values1_rr_DL[0] is reserved
-
-                # AMK_Status = int(amk_actual_values1_rr_DL[1])
-                # AMK_ActualVelocity = compareValues_32767(int(amk_actual_values1_rr_DL[2]))
-                # AMK_TorqueCurrent = compareValues_32767(int(amk_actual_values1_rr_DL[3]))
-                # AMK_MagnetizingCurrent = compareValues_32767(int(amk_actual_values1_rr_DL[4]))
-
-                # writer = csv.writer(f_amk_actual_values1_rr)
-                # writer.writerow([time, AMK_bSystemReady, AMK_bError, AMK_bWarn, AMK_bQuitDcOn, AMK_bDcOn, AMK_bQuitInverterOn, AMK_bInverterOn, AMK_bDerating, AMK_ActualVelocity, AMK_TorqueCurrent, AMK_MagnetizingCurrent])
-
-
-                # amk_actual_values2_rr
+                    
                 if line[3] == '00275289':
                     if len(line) < 12:
                         continue
@@ -453,20 +335,7 @@ for folder in Org_file_list:
                     
                     writer = csv.writer(f_amk_actual_values2_rr)
                     writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
-                
-                
-                # amk_actual_values2_rr_DL = data_on('00275289',[2,2,2,2],line)
-
-                # AMK_TempMotor = compareValues_32767(int(amk_actual_values2_rr_DL[0])) / 10
-                # AMK_TempInverter = compareValues_32767(int(amk_actual_values2_rr_DL[1])) / 10
-                # AMK_TempInverter = int(amk_actual_values2_rr_DL[2])
-                # AMK_TempIGBT = compareValues_32767(int(amk_actual_values2_rr_DL[3])) / 10
-
-                # writer = csv.writer(f_amk_actual_values2_rr)
-                # writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
-
-                
-                # amk_actual_values2_rl    
+                    
                 if line[3] == '0027528A':
                     if len(line) < 12:
                         continue
@@ -493,19 +362,7 @@ for folder in Org_file_list:
                     
                     writer = csv.writer(f_amk_actual_values2_rl)
                     writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
-
-                # amk_actual_values2_rl_DL = data_on('0027528A',[2,2,2,2],line)
-
-                # AMK_TempMotor = compareValues_32767(int(amk_actual_values2_rl_DL[0])) / 10
-                # AMK_TempInverter = compareValues_32767(int(amk_actual_values2_rl_DL[1])) / 10
-                # AMK_TempInverter = int(amk_actual_values2_rl_DL[2])
-                # AMK_TempIGBT = compareValues_32767(int(amk_actual_values2_rl_DL[3])) / 10
-
-                # writer = csv.writer(f_amk_actual_values2_rr)
-                # writer.writerow([time, AMK_TempMotor, AMK_TempInverter, AMK_ErrorInfo, AMK_TempIGBT])
-
-                
-                # steering_wheel_msg2
+                    
                 if line[3] == '00101F01':
                     if len(line) < 12:
                         continue
@@ -518,14 +375,6 @@ for folder in Org_file_list:
                     
                     writer = csv.writer(f_steering_wheel_msg2)
                     writer.writerow([time, apps, bpps])
-
-                # steering_wheel_msg2_DL = data_on('00101F01',[2,2],line)
-
-                # apps = int(steering_wheel_msg2_DL[0]) / 100
-                # bpps = int(steering_wheel_msg2_DL[1]) / 100
-
-                # writer = csv.writer(f_steering_wheel_msg2)
-                # writer.writerow([time, apps, bpps])               
 
             # print(f"파일들이 {file_dst}에 저장되었습니다.")
 
@@ -544,4 +393,94 @@ for folder in Org_file_list:
         
         f_steering_wheel_msg2.close()
     
+print('org_dst_end')
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import os 
+# plt.close('all')
+
+dst_direct = base_directory + '\\org_dst\\'
+
+# 개별 그래프 저장 함수
+def save_plot(time, data, label, color, file_name):
+    plt.figure(figsize=(10, 6))
+    plt.plot(time, data, label=label, color=color)
+    plt.xlabel('Time')
+    plt.ylabel('Value')
+    plt.title(label)
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(file_name)
+    plt.close()
+
+# 모든 그래프 저장 함수
+def save_ALL_plot():
+    plt.figure(figsize=(10, 6))
+    plt.plot(time1, AMK_ActualVelocity_rl, label='AMK_ActualVelocity_rl', color='red')
+    plt.plot(time2, AMK_ActualVelocity_rr, label='AMK_ActualVelocity_rr', color='orange')
+    plt.plot(time3, AMK_Torque_setpoint_rl, label='AMK_Torque_setpoint_rl', color='yellow')
+    plt.plot(time4, AMK_Torque_setpoint_rr, label='AMK_Torque_setpoint_rr', color='green')
+    plt.plot(time5, packCurrent, label='packCurrent', color='blue')
+    plt.plot(time6, packDischargeLimit, label='packDischargeLimit', color='purple')
+    plt.xlabel('Time')
+    plt.ylabel('Value')
+    plt.title('All in One')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_ALL_in_one.pdf')
+    plt.close()
+
+can2024_XX_list = sorted(os.listdir(dst_direct))
+
+for file in can2024_XX_list:
+
+    can2024_XX_forder_list = sorted(os.listdir(dst_direct + file + '\\'))
+
+    for forder in can2024_XX_forder_list:
+        file_forder_directory = dst_direct + file + '\\' + forder + '\\' + forder
+        file_path1 = file_forder_directory + '_amk_actual_values1_rl.csv'
+        file_path2 = file_forder_directory + '_amk_actual_values1_rr.csv'
+        file_path3 = file_forder_directory + '_amk_setpoint1_rl.csv'
+        file_path4 = file_forder_directory + '_amk_setpoint1_rr.csv'
+        file_path5 = file_forder_directory + '_orion_bms1.csv'
+        file_path6 = file_forder_directory + '_orion_bms2.csv'
+
+        df1 = pd.read_csv(file_path1)
+        df2 = pd.read_csv(file_path2)
+        df3 = pd.read_csv(file_path3)
+        df4 = pd.read_csv(file_path4)
+        df5 = pd.read_csv(file_path5)
+        df6 = pd.read_csv(file_path6)
+
+        time1 = df1['time']
+        AMK_ActualVelocity_rl = df1['AMK_ActualVelocity']
+        time2 = df2['time']
+        AMK_ActualVelocity_rr = df2['AMK_ActualVelocity']
+        time3 = df3['time']
+        AMK_Torque_setpoint_rl = df3['AMK_Torque_setpoint']
+        time4 = df4['time']
+        AMK_Torque_setpoint_rr = df4['AMK_Torque_setpoint']
+        time5 = df5['time']
+        packCurrent = df5['packCurrent']
+        time6 = df6['time']
+        packDischargeLimit = df6['packDischargeLimit']
+
+        pdf_directory = os.path.join(dst_direct + file + '\\' + forder + '\\PDF\\')
+
+        if not os.path.exists(pdf_directory):
+            os.makedirs(pdf_directory)
+
+        # 개별 그래프 저장
+        save_plot(time1, AMK_ActualVelocity_rl, 'AMK_ActualVelocity_rl', 'red', dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_AMK_ActualVelocity_rl.pdf')
+        save_plot(time2, AMK_ActualVelocity_rr, 'AMK_ActualVelocity_rr', 'orange', dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_AMK_ActualVelocity_rr.pdf')
+        save_plot(time3, AMK_Torque_setpoint_rl, 'AMK_Torque_setpoint_rl', 'yellow', dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_AMK_Torque_setpoint_rl.pdf')
+        save_plot(time4, AMK_Torque_setpoint_rr, 'AMK_Torque_setpoint_rr', 'green', dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_AMK_Torque_setpoint_rr.pdf')
+        save_plot(time5, packCurrent, 'packCurrent', 'blue', dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_packCurrent.pdf')
+        save_plot(time6, packDischargeLimit, 'packDischargeLimit', 'purple', dst_direct + file + '\\' + forder + '\\PDF\\' + forder + '_packDischargeLimit.pdf')
+
+        # 올인원 그래프 저장
+        save_ALL_plot()
+        # print(f"모든 pdf 파일이 {dst_direct + file + '\\' + forder + '\\PDF'}에 저장되었습니다.")
+
 print('end')
